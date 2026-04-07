@@ -48,13 +48,22 @@ const plaudTasks = [
   { title: "Secure business card for David (branch manager)", source: "plaud", timeframe_minutes: 480 },
 ];
 
+// NOTE: Replace CRM_EMAIL and CRM_PASSWORD in your environment before running
+// export CRM_EMAIL=your@email.com
+// export CRM_PASSWORD=yourpassword
 async function login() {
+  const email = process.env.CRM_EMAIL || process.argv[2];
+  const password = process.env.CRM_PASSWORD || process.argv[3];
+  if (!email || !password) {
+    throw new Error('Usage: node import-plaud-tasks.js <email> <password>\nOr set CRM_EMAIL and CRM_PASSWORD environment variables.');
+  }
   const res = await fetch(`${API}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'david@traditionsales.com', password: 'zaq1zse4ZAQ!ZSE$' })
+    body: JSON.stringify({ email, password })
   });
   const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Login failed');
   return data.token;
 }
 
