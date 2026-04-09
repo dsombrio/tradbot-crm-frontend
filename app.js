@@ -254,7 +254,21 @@ function formatElapsed(ms) {
 function renderTaskItem(t, showActions = false, fromDashboard = false) {
   const time = getTimeClass(t.created_at, t.timeframe_minutes, t.status);
   const created = new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-  
+
+  // Parse recording date from description (e.g. "Recorded: 2026-03-25 | Source: Plaud 03-25")
+  let recordingDate = null;
+  if (t.description) {
+    const m = t.description.match(/Recorded:\s*(\d{4}-\d{2}-\d{2})/);
+    if (m) recordingDate = m[1];
+  }
+
+  // Format due date for display
+  let dueDateDisplay = '';
+  if (t.due_date) {
+    const d = new Date(t.due_date);
+    dueDateDisplay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
   return `
     <div class="task-item ${t.status === 'completed' ? 'completed' : ''} ${time.class}" onclick="openTaskDetail(null, ${t.id})">
       <div class="task-checkbox ${t.status === 'completed' ? 'checked' : ''}" onclick="event.stopPropagation();toggleTask(${t.id})">
@@ -263,9 +277,10 @@ function renderTaskItem(t, showActions = false, fromDashboard = false) {
       <div class="task-content">
         <div class="task-title" style="${t.status === 'completed' ? 'text-decoration:line-through' : ''}">${t.title}</div>
         <div class="task-meta">
-          ${t.company ? `<span>${t.first_name || ''} ${t.last_name || ''} @ ${t.company}</span>` : ''}
+          ${recordingDate ? `<span style="color:#7c6aef;font-size:12px">Rec: ${recordingDate}</span>` : ''}
+          ${t.source && t.source !== 'plaud' && t.source.startsWith('Plaud') ? `<span class="badge badge-plaud">${t.source}</span>` : ''}
           ${t.source === 'plaud' ? '<span class="badge badge-plaud">Plaud</span>' : ''}
-          ${t.description ? '<span style="opacity:0.5">has notes</span>' : ''}
+          ${dueDateDisplay ? `<span style="color:#888;font-size:12px">Due: ${dueDateDisplay}</span>` : ''}
         </div>
       </div>
       <div class="task-time ${time.class}">${time.text}</div>
@@ -298,14 +313,31 @@ function openTaskDetail(taskObj, id) {
   const completed = task.completed_at ? new Date(task.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : null;
   const time = getTimeClass(task.created_at, task.timeframe_minutes, task.status);
   
+  // Parse recording date from description
+  let recordingDate = null;
+  if (task.description) {
+    const m = task.description.match(/Recorded:\s*(\d{4}-\d{2}-\d{2})/);
+    if (m) recordingDate = m[1];
+  }
+
+  // Format due date
+  let dueDateDisplay = '';
+  if (task.due_date) {
+    const d = new Date(task.due_date);
+    dueDateDisplay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
   document.getElementById('modal-title').textContent = task.title;
   document.getElementById('modal-body').innerHTML = `
     <div style="margin-bottom:16px">
-      <div style="display:flex;gap:8px;margin-bottom:8px">
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
         <span class="badge badge-${task.status === 'completed' ? 'won' : task.source === 'plaud' ? 'plaud' : 'lead'}">${task.status}</span>
+        ${task.source && task.source !== 'plaud' && task.source.startsWith('Plaud') ? `<span class="badge badge-plaud">${task.source}</span>` : ''}
         ${task.source === 'plaud' ? '<span class="badge badge-plaud">Plaud</span>' : ''}
       </div>
       <div style="color:var(--text-secondary);font-size:13px">
+        ${recordingDate ? `<div style="margin-bottom:4px"><strong style="color:#7c6aef">Recorded:</strong> ${recordingDate}</div>` : ''}
+        ${dueDateDisplay ? `<div style="margin-bottom:4px"><strong>Due:</strong> ${dueDateDisplay}</div>` : ''}
         <div>Created: ${created}</div>
         ${completed ? `<div>Completed: ${completed}</div>` : ''}
         <div>Time elapsed: ${time.text}</div>
